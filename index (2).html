@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z6FCKP06DH"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){ dataLayer.push(arguments); }
+  gtag("js", new Date());
+  gtag("config", "G-Z6FCKP06DH");
+</script>
+
+<title>MotorScan</title>
+<meta name="description" content="MotorScan: diagnóstico automotriz interactivo. Responde unas preguntas sobre lo que notaste en tu auto y descubre la causa más probable al instante.">
+<meta name="theme-color" content="#0E1013">
+<meta property="og:title" content="MotorScan">
+<meta property="og:description" content="Diagnóstico automotriz interactivo: responde unas preguntas y descubre qué puede estar fallando en tu auto.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%A7%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg: #0E1013;
+    --screen: #15181D;
+    --panel: #1B1F25;
+    --border: #2a2f38;
+    --border-soft: #23272e;
+    --text: #E9EBEE;
+    --text-muted: #9AA0A8;
+    --text-faint: #6B7280;
+    --text-faintest: #565c66;
+    --accent: #F5A623;
+    --ok: #5FD97A;
+    --bad: #F0553F;
+    --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+    --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
+  }
+
+  *{ box-sizing: border-box; }
+  html, body{ height: 100%; }
+  body{
+    margin: 0;
+    min-height: 100%;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(245,166,35,0.06), transparent 55%),
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px),
+      var(--bg);
+    background-size: auto, 26px 26px, 26px 26px;
+    color: var(--text);
+    font-family: var(--font-body);
+    display: flex;
+    justify-content: center;
+    padding: clamp(24px, 6vw, 36px) 16px 44px;
+  }
+
+  .dv-display{ font-family: var(--font-display); }
+  .dv-mono{ font-family: var(--font-mono); }
+
+  .app{ width: 100%; max-width: 480px; }
+
+  .brand{ text-align: center; margin-bottom: 22px; }
+  .eyebrow{
+    font-size: 11px; letter-spacing: 3px; color: var(--text-faint);
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .title{
+    font-size: clamp(24px, 6vw, 28px); font-weight: 700; letter-spacing: -0.5px;
+    text-wrap: balance; margin: 0;
+  }
+  .subtitle{
+    font-size: 14px; color: var(--text-muted); margin-top: 6px;
+    max-width: 360px; margin-left: auto; margin-right: auto; line-height: 1.5;
+  }
+
+  .casing{
+    border-radius: 20px; padding: 1.5px;
+    background: linear-gradient(155deg, #3a3f47, #1c1f24 40%, #1c1f24 60%, #45403a);
+    box-shadow: 0 20px 50px -20px rgba(0,0,0,0.6);
+  }
+  .screen{ background: var(--screen); border-radius: 18.5px; overflow: hidden; }
+
+  .bezel{
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px; border-bottom: 1px solid var(--border-soft);
+    background: linear-gradient(180deg, #1a1d22, #15181d);
+  }
+  .leds{ display: flex; gap: 6px; }
+  .led{ width: 7px; height: 7px; border-radius: 50%; display: inline-block; animation: dv-pulse 2.6s ease-in-out infinite; }
+  @keyframes dv-pulse{ 0%, 100%{ opacity: 1; } 50%{ opacity: 0.35; } }
+  .bezel-label{ font-size: 10.5px; letter-spacing: 1.5px; color: var(--text-faintest); }
+
+  .screen-inner{
+    padding: 26px 22px 22px;
+    transition: opacity .5s ease, transform .5s ease;
+  }
+  .screen-inner.booting{ opacity: 0; transform: scale(0.98); }
+
+  .gauge-wrap{ display: flex; justify-content: center; margin-bottom: 20px; }
+
+  .dv-scan{ animation: dv-scan 1.4s cubic-bezier(.4,0,.2,1) forwards; }
+  @keyframes dv-scan{ from{ stroke-dashoffset: 264; } to{ stroke-dashoffset: var(--target, 0); } }
+
+  .panel-eyebrow{
+    font-size: 10px; letter-spacing: 1.5px; color: var(--text-faintest);
+    margin-bottom: 8px; text-transform: uppercase;
+  }
+  .panel-title{
+    font-size: 18px; font-weight: 600; line-height: 1.35; text-wrap: balance;
+    margin: 0 0 16px;
+  }
+
+  .options{ display: flex; flex-direction: column; gap: 8px; }
+  .option{
+    display: flex; align-items: center; gap: 12px;
+    text-align: left; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 11px;
+    padding: 13px 15px; color: var(--text);
+    font-family: var(--font-body); font-size: 14.5px;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease, transform .12s ease;
+  }
+  .option:hover{ border-color: var(--accent); background: rgba(245,166,35,0.07); transform: translateX(3px); }
+  .option:active{ transform: translateX(1px) scale(0.995); }
+  .option:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+  .option svg{ flex-shrink: 0; }
+
+  .back-link{
+    margin-top: 18px; display: flex; align-items: center; gap: 6px;
+    background: none; border: none; color: var(--text-faint);
+    font-family: var(--font-body); font-size: 13px; cursor: pointer; padding: 0;
+    transition: opacity .15s ease;
+  }
+  .back-link:hover{ opacity: 0.88; color: var(--text); }
+  .back-link:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .result-card{ border-radius: 13px; background: var(--panel); padding: 18px; border: 1px solid var(--border); }
+  .severity-row{ display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .severity-tag{ font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; }
+  .result-title{ font-size: 18.5px; font-weight: 700; margin: 0 0 9px; line-height: 1.3; text-wrap: balance; }
+  .context-note{ font-size: 13px; color: #8B90A0; line-height: 1.5; margin-bottom: 11px; font-style: italic; }
+  .result-desc{ font-size: 14px; color: #B0B5BC; line-height: 1.55; margin-bottom: 15px; }
+  .action-box{ display: flex; gap: 10px; background: var(--screen); border: 1px solid var(--border-soft); border-radius: 9px; padding: 13px; }
+  .action-box svg{ flex-shrink: 0; margin-top: 2px; }
+  .action-label{ font-size: 10px; letter-spacing: 1px; color: var(--accent); margin-bottom: 4px; text-transform: uppercase; }
+  .action-text{ font-size: 13.5px; line-height: 1.5; color: #D7DADE; }
+
+  .result-buttons{ display: flex; gap: 10px; margin-top: 14px; }
+  .btn{
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    border-radius: 10px; padding: 12px 14px; font-family: var(--font-body);
+    font-size: 13px; cursor: pointer; border: 1px solid transparent;
+    transition: opacity .15s ease, transform .12s ease;
+  }
+  .btn:hover{ opacity: 0.88; }
+  .btn:active{ transform: scale(0.98); }
+  .btn:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn-secondary{ background: var(--panel); border-color: var(--border); color: var(--text); }
+  .btn-primary{ background: var(--accent); color: var(--screen); font-weight: 600; }
+
+  .foot-label{
+    border-top: 1px solid var(--border-soft); padding: 10px 18px;
+    font-size: 10px; color: #4b5157; text-align: center; letter-spacing: 0.4px;
+  }
+
+  .beta-badge{
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px;
+    color: var(--accent); background: rgba(245,166,35,0.1);
+    border: 1px solid rgba(245,166,35,0.35); border-radius: 999px;
+    padding: 4px 10px; text-transform: uppercase;
+  }
+  .beta-badge .dot{ width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+
+  .top-row{
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .ig-link{
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px;
+    color: var(--text-faint); background: var(--panel);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 4px 10px; text-decoration: none; transition: color .15s ease, border-color .15s ease;
+  }
+  .ig-link:hover{ color: var(--accent); border-color: var(--accent); }
+
+  .mini-actions{ display: flex; gap: 10px; margin-top: 10px; }
+  .mini-btn{
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    background: none; border: none; color: var(--text-faint);
+    font-family: var(--font-body); font-size: 12.5px; cursor: pointer; padding: 8px;
+    border-radius: 8px; transition: color .15s ease, background .15s ease;
+  }
+  .mini-btn:hover{ color: var(--text); background: rgba(255,255,255,0.03); }
+
+  .survey-card{
+    margin-top: 16px; border-radius: 13px; background: var(--panel);
+    border: 1px solid var(--border); padding: 16px;
+  }
+  .survey-title{ font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+  .survey-ratings{ display: flex; gap: 8px; margin-bottom: 10px; }
+  .survey-rating-btn{
+    flex: 1; background: var(--screen); border: 1px solid var(--border);
+    border-radius: 9px; padding: 10px 6px; color: var(--text-muted);
+    font-family: var(--font-body); font-size: 12px; cursor: pointer; text-align: center;
+    transition: border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  .survey-rating-btn:hover{ border-color: var(--accent); color: var(--text); }
+  .survey-rating-btn.selected{ border-color: var(--accent); background: rgba(245,166,35,0.1); color: var(--text); }
+  .survey-comment{
+    width: 100%; background: var(--screen); border: 1px solid var(--border);
+    border-radius: 9px; padding: 10px 12px; color: var(--text);
+    font-family: var(--font-body); font-size: 13px; resize: vertical; min-height: 60px;
+    margin-bottom: 10px;
+  }
+  .survey-comment::placeholder{ color: var(--text-faintest); }
+  .survey-comment:focus, .survey-rating-btn:focus-visible{ outline: 2px solid var(--accent); outline-offset: 1px; }
+  .survey-sent{ font-size: 13px; color: var(--ok); text-align: center; padding: 6px 0; }
+
+  @media (prefers-reduced-motion: reduce){
+    .led, .dv-scan{ animation: none !important; }
+    .screen-inner{ transition: none !important; }
+    *{ transition-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="brand">
+    <div class="top-row">
+      <span class="beta-badge"><span class="dot"></span>Versión beta</span>
+      <a class="ig-link" href="https://instagram.com/jofht_fh" target="_blank" rel="noopener">📷 @jofht_fh</a>
+    </div>
+    <div class="eyebrow dv-mono">MotorScan</div>
+    <h1 class="title dv-display">¿Qué le pasa a tu auto?</h1>
+    <div class="subtitle">Responde un par de preguntas sobre lo que notaste y te decimos la causa más probable.</div>
+  </div>
+
+  <div class="casing">
+    <div class="screen">
+      <div class="bezel">
+        <div class="leds">
+          <span class="led" style="background:var(--bad)"></span>
+          <span class="led" style="background:var(--accent);animation-delay:.3s"></span>
+          <span class="led" style="background:var(--ok);animation-delay:.6s"></span>
+        </div>
+        <div class="bezel-label dv-mono">MOTORSCAN&nbsp;1.0</div>
+      </div>
+
+      <div class="screen-inner booting" id="screenInner">
+        <div class="gauge-wrap" id="gaugeWrap"></div>
+        <div id="content"></div>
+      </div>
+
+      <div class="foot-label dv-mono">ESTO ES UNA ORIENTACIÓN — NO REEMPLAZA LA REVISIÓN DE UN MECÁNICO</div>
+    </div>
+  </div>
+
+  <div id="surveyWrap"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------------------------------------------------------------
+  // Contacto
+  // ---------------------------------------------------------------------
+  var CONTACT_EMAIL = "jofthi.fh@gmail.com";
+
+  // ---------------------------------------------------------------------
+  // Árbol de diagnóstico
+  // ---------------------------------------------------------------------
+  var TREE = {
+    start: {
+      type: "question",
+      text: "¿Qué es lo primero que notaste en tu auto?",
+      options: [
+        { text: "Ruido extraño", next: "ruido", icon: "volume2" },
+        { text: "No enciende", next: "no_enciende", icon: "powerOff" },
+        { text: "Se sobrecalienta", next: "sobrecalienta", icon: "thermometer" },
+        { text: "Huele raro", next: "huele", icon: "wind" },
+        { text: "Vibra, rebota o se mueve raro", next: "vibra", icon: "waves" },
+        { text: "Luz del tablero encendida (o algo eléctrico falló)", next: "luces", icon: "lightbulb" },
+        { text: "Frena mal", next: "frena", icon: "circleDot" },
+        { text: "Cambios de marcha raros", next: "transmision", icon: "gitBranch" },
+        { text: "El aire acondicionado no enfría", next: "aire_acond", icon: "snowflake" },
+        { text: "Pierde fuerza o se apaga manejando", next: "pierde_fuerza", icon: "batteryWarning" },
+      ],
+    },
+    ruido: {
+      type: "question",
+      text: "¿Cuándo se escucha el ruido?",
+      options: [
+        { text: "Al frenar (chillido metálico)", next: "res_pastillas" },
+        { text: "Al girar la llave, antes de arrancar", next: "res_motor_arranque" },
+        { text: "Al acelerar", next: "ruido_acelerar" },
+        { text: "Al girar el volante", next: "direccion_sub" },
+        { text: "Ronco y fuerte, viene de atrás del auto", next: "res_escape" },
+      ],
+    },
+    ruido_acelerar: {
+      type: "question",
+      text: "¿Cómo describirías ese ruido?",
+      options: [
+        { text: "Chillido o silbido agudo y constante", next: "res_correa_auxiliar" },
+        { text: "Traqueteo metálico rítmico, como del motor", next: "res_correa_distribucion" },
+      ],
+    },
+    direccion_sub: {
+      type: "question",
+      text: "¿El volante también se siente más pesado o duro de girar?",
+      options: [
+        { text: "Sí, pesado y con ruido", next: "res_direccion_hidraulica" },
+        { text: "No, gira normal, solo hay ruido", next: "res_rotulas" },
+      ],
+    },
+    no_enciende: {
+      type: "question",
+      text: "¿Qué pasa exactamente al girar la llave o presionar el botón de encendido?",
+      options: [
+        { text: "No pasa nada, silencio total", next: "res_bateria_muerta" },
+        { text: "A veces enciende y a veces no (intermitente)", next: "res_terminales_corroidos" },
+        { text: "Se escucha un clic pero no arranca", next: "res_motor_arranque" },
+        { text: "Arranca y se apaga a los segundos", next: "res_bujias" },
+        { text: "Cuesta que arranque, pero al final prende", next: "res_bomba_combustible" },
+      ],
+    },
+    sobrecalienta: {
+      type: "question",
+      text: "¿Qué notas exactamente?",
+      options: [
+        { text: "La aguja sube rápido y se queda en zona roja", next: "res_radiador" },
+        { text: "La aguja sube y baja de forma irregular", next: "res_termostato" },
+        { text: "Sube sobre todo cuando estoy detenido o en taco", next: "res_ventilador" },
+        { text: "Se sobrecalienta y además hace un ruido raro", next: "res_bomba_agua" },
+      ],
+    },
+    huele: {
+      type: "question",
+      text: "¿A qué se parece el olor?",
+      options: [
+        { text: "A quemado / aceite caliente", next: "res_aceite_quemado" },
+        { text: "Dulce, como jarabe", next: "res_fuga_refrigerante" },
+        { text: "A huevo podrido", next: "res_catalizador" },
+      ],
+    },
+    vibra: {
+      type: "question",
+      text: "¿En qué momento vibra, rebota o se mueve raro?",
+      options: [
+        { text: "Al frenar", next: "res_discos" },
+        { text: "Andando en carretera, a velocidad", next: "neumaticos_sub" },
+        { text: "Detenido, con el motor prendido", next: "res_ralenti" },
+        { text: "Rebota mucho al pasar baches o lomos", next: "res_amortiguadores" },
+      ],
+    },
+    neumaticos_sub: {
+      type: "question",
+      text: "¿Cómo se ven las llantas al mirarlas de cerca?",
+      options: [
+        { text: "Se ven parejas, sin nada raro", next: "res_neumaticos_desbalance" },
+        { text: "Gastadas más de un lado o en manchas", next: "res_neumaticos_desgaste" },
+      ],
+    },
+    luces: {
+      type: "question",
+      text: "¿Cuál luz está encendida, o qué dejó de funcionar?",
+      options: [
+        { text: "Check Engine (motor)", next: "res_check_engine" },
+        { text: "Batería", next: "res_alternador" },
+        { text: "Aceite", next: "res_aceite_bajo" },
+        { text: "Frenos", next: "res_liquido_frenos" },
+        { text: "Un foco (luz exterior) no prende", next: "res_foco_quemado" },
+        { text: "Algo eléctrico dejó de funcionar de golpe (ventana, radio, etc.)", next: "res_fusible" },
+      ],
+    },
+    frena: {
+      type: "question",
+      text: "¿Cómo frena mal?",
+      options: [
+        { text: "El pedal se hunde hasta el fondo", next: "res_fuga_frenos" },
+        { text: "Chirría al frenar", next: "res_pastillas" },
+        { text: "El auto se va hacia un lado", next: "res_frenos_desiguales" },
+        { text: "Cuesta soltar el freno de mano o el auto arrastra", next: "res_freno_mano" },
+      ],
+    },
+    transmision: {
+      type: "question",
+      text: "¿Qué notas al cambiar de marcha?",
+      options: [
+        { text: "El embrague se siente raro o pierde fuerza al soltarlo (manual)", next: "res_embrague" },
+        { text: "Tirones o demora al cambiar de marcha (automática)", next: "res_caja_cambios" },
+        { text: "Cambios bruscos junto con un ruido", next: "res_liquido_transmision" },
+      ],
+    },
+    aire_acond: {
+      type: "question",
+      text: "¿Qué pasa exactamente con el aire acondicionado?",
+      options: [
+        { text: "Sale aire, pero no enfría", next: "res_gas_ac" },
+        { text: "Hace un ruido raro al activarlo, o no arranca", next: "res_compresor_ac" },
+      ],
+    },
+    pierde_fuerza: {
+      type: "question",
+      text: "¿Cuándo pierde fuerza o se apaga?",
+      options: [
+        { text: "Al acelerar fuerte, como si le faltara aire", next: "res_filtro_aire" },
+        { text: "En cualquier momento, de forma random", next: "res_filtro_combustible" },
+        { text: "Sobre todo al subir pendientes o exigirlo", next: "res_bomba_combustible" },
+      ],
+    },
+
+    res_pastillas: { type: "result", severity: "moderada", title: "Pastillas de freno gastadas", description: "Ese chillido metálico agudo suele ser el indicador de desgaste de las pastillas avisándote que ya llegaron al límite.", action: "Revisa el grosor de las pastillas o llévalo a un taller esta semana, antes de que el desgaste dañe el disco de freno." },
+    res_motor_arranque: { type: "result", severity: "urgente", title: "Motor de arranque con falla", description: "Un clic al girar la llave, sin que el motor encienda, suele indicar que el motor de arranque está fallando (o la batería está baja).", action: "Prueba con cables pasacorriente. Si arranca así, es la batería; si no, revisa el motor de arranque en un taller." },
+    res_correa_auxiliar: { type: "result", severity: "moderada", title: "Correa auxiliar (de accesorios) floja o desgastada", description: "Un chillido o silbido agudo al acelerar suele venir de la correa que mueve el alternador, la bomba de agua o el A/C, floja o resbalando.", action: "Pide que revisen la tensión y el estado de la correa auxiliar; si está muy desgastada, cámbiala pronto." },
+    res_correa_distribucion: { type: "result", severity: "urgente", title: "Correa de distribución floja o desgastada", description: "Un traqueteo metálico rítmico del motor puede indicar problemas en la correa de distribución, que es clave para el funcionamiento del motor.", action: "No sigas manejando mucho así. Llévalo a revisar pronto: si esta correa falla del todo, puede dañar el motor seriamente." },
+    res_direccion_hidraulica: { type: "result", severity: "moderada", title: "Dirección hidráulica con fuga", description: "Un volante pesado junto con ruido al girar suele indicar bajo nivel de líquido de dirección hidráulica, por una fuga.", action: "Revisa el estanque de líquido de dirección y busca manchas bajo el auto. Lleva a revisar la fuga pronto." },
+    res_rotulas: { type: "result", severity: "moderada", title: "Rótulas o rodamientos de dirección desgastados", description: "Un ruido al girar el volante, con la dirección funcionando normal, suele apuntar a una rótula o rodamiento gastados.", action: "Llévalo a un taller para que revisen la dirección y suspensión; no es urgente pero no lo dejes pasar mucho." },
+    res_escape: { type: "result", severity: "moderada", title: "Escape roto o con fuga", description: "Un ruido ronco y fuerte que viene de la parte trasera del auto suele indicar una fuga o rotura en el sistema de escape.", action: "Llévalo a revisar; además del ruido, puede afectar el rendimiento y dejar entrar gases donde no debería." },
+    res_bateria_muerta: { type: "result", severity: "urgente", title: "Batería completamente descargada", description: "Si no pasa absolutamente nada al girar la llave, lo más probable es que la batería esté sin carga.", action: "Intenta arrancar con cables pasacorriente o un cargador. Si es recurrente, la batería puede necesitar cambio." },
+    res_terminales_corroidos: { type: "result", severity: "moderada", title: "Terminales de batería corroídos", description: "Un encendido intermitente (a veces sí, a veces no) suele deberse a una mala conexión por corrosión en los terminales de la batería.", action: "Revisa visualmente los terminales: si ves un polvo blanco/verdoso, límpialos o pide que los revisen en un taller." },
+    res_bujias: { type: "result", severity: "moderada", title: "Bujías sucias o gastadas", description: "Si el motor arranca pero se apaga solo, o anda irregular, suele haber bujías sucias o gastadas.", action: "Lleva el auto a un taller para revisar y, si corresponde, cambiar las bujías." },
+    res_bomba_combustible: { type: "result", severity: "moderada", title: "Bomba de combustible fallando", description: "Si cuesta que arranque, o pierde fuerza al exigir el motor (como en pendientes), la bomba de combustible puede no estar entregando suficiente presión.", action: "Lleva el auto a revisar el sistema de combustible antes de que empeore y deje de arrancar del todo." },
+    res_radiador: { type: "result", severity: "urgente", title: "Radiador con fuga o bajo nivel de refrigerante", description: "La aguja en zona roja de forma sostenida indica sobrecalentamiento real, que puede dañar el motor si sigues manejando.", action: "Detente en un lugar seguro, apaga el motor y espera a que enfríe. No sigas manejando así." },
+    res_termostato: { type: "result", severity: "moderada", title: "Termostato dañado", description: "Una aguja de temperatura que sube y baja de forma irregular suele indicar un termostato que no regula bien el flujo de refrigerante.", action: "Llévalo a revisar; es una pieza relativamente económica de cambiar y evita daños mayores." },
+    res_ventilador: { type: "result", severity: "moderada", title: "Ventilador del radiador no funciona", description: "Si el auto se sobrecalienta sobre todo detenido o en taco (y se enfría al andar), el ventilador del radiador puede no estar funcionando.", action: "Lleva el auto a revisar el ventilador y su motor eléctrico o fusible asociado." },
+    res_bomba_agua: { type: "result", severity: "urgente", title: "Bomba de agua fallando", description: "Sobrecalentamiento junto con un ruido raro puede indicar que la bomba de agua, que hace circular el refrigerante, está fallando.", action: "Llévalo a revisar pronto: si la bomba de agua falla del todo, el motor se puede sobrecalentar gravemente." },
+    res_aceite_quemado: { type: "result", severity: "moderada", title: "Fuga de aceite sobre el motor", description: "Un olor a quemado suele deberse a aceite goteando sobre partes calientes del motor.", action: "Revisa el nivel de aceite y busca manchas bajo el auto. Lleva el auto a revisión antes de que baje mucho el nivel." },
+    res_fuga_refrigerante: { type: "result", severity: "moderada", title: "Fuga de refrigerante (anticongelante)", description: "Un olor dulce suele indicar una fuga en el sistema de refrigeración.", action: "Revisa el nivel del estanque de refrigerante y busca manchas bajo el auto. Lleva a revisar la fuga pronto." },
+    res_catalizador: { type: "result", severity: "moderada", title: "Convertidor catalítico con falla", description: "El olor a huevo podrido casi siempre apunta a un problema en el convertidor catalítico.", action: "Llévalo a un taller mecánico; seguir manejando así puede afectar el rendimiento del motor." },
+    res_discos: { type: "result", severity: "moderada", title: "Discos de freno alabeados", description: "Una vibración en el pedal o el volante al frenar suele indicar discos de freno deformados por el calor.", action: "Pide que midan y, si corresponde, rectifiquen o cambien los discos de freno." },
+    res_neumaticos_desbalance: { type: "result", severity: "leve", title: "Neumáticos desalineados o desbalanceados", description: "Una vibración que aparece a cierta velocidad en carretera, con llantas que se ven bien, suele ser por desbalance o mala alineación.", action: "Agenda una alineación y balanceo; es una revisión rápida y económica." },
+    res_neumaticos_desgaste: { type: "result", severity: "moderada", title: "Neumáticos con desgaste irregular", description: "Si las llantas están gastadas de forma despareja, además de la vibración puede haber un problema de alineación o suspensión detrás.", action: "Lleva el auto a revisar la alineación y suspensión, y considera rotar o cambiar los neumáticos más gastados." },
+    res_ralenti: { type: "result", severity: "leve", title: "Bujías sucias o motor irregular en ralentí", description: "Una vibración estando detenido con el motor prendido suele venir de bujías sucias o una mezcla de combustible desajustada.", action: "Una revisión y limpieza de bujías suele resolverlo. Agenda una mantención general." },
+    res_amortiguadores: { type: "result", severity: "moderada", title: "Amortiguadores gastados", description: "Si el auto rebota mucho al pasar baches o lomos, y sigue rebotando, es señal típica de amortiguadores gastados.", action: "Lleva el auto a revisar los amortiguadores; afecta tanto el confort como el control del auto." },
+    res_check_engine: { type: "result", severity: "moderada", title: "Falla detectada por el sistema del motor (Check Engine)", description: "Esta luz puede significar muchas cosas, desde algo menor hasta algo serio; el auto guarda un código que identifica la causa exacta.", action: "Lleva el auto a que le hagan un escaneo con scanner OBD-II para identificar el código exacto." },
+    res_alternador: { type: "result", severity: "urgente", title: "Alternador con falla (o batería)", description: "La luz de batería encendida mientras manejas suele indicar que el alternador no está cargando el sistema eléctrico.", action: "Evita apagar el auto hasta llegar a un taller: si el alternador falló, el auto puede quedarse sin energía." },
+    res_aceite_bajo: { type: "result", severity: "urgente", title: "Nivel de aceite bajo", description: "La luz de aceite indica que la presión o el nivel de aceite del motor está bajo lo normal.", action: "Detente y revisa el nivel de aceite con la varilla antes de seguir manejando. Rellena o lleva a revisión." },
+    res_liquido_frenos: { type: "result", severity: "urgente", title: "Líquido de frenos bajo o pastillas muy gastadas", description: "La luz de frenos suele avisar que el nivel de líquido de frenos está bajo o que las pastillas están al límite.", action: "Revisa el estanque de líquido de frenos y no sigas manejando si notas el pedal raro. Lleva a revisión pronto." },
+    res_foco_quemado: { type: "result", severity: "leve", title: "Foco o luz exterior quemada", description: "Si un foco (freno, direccional, luz baja/alta) dejó de prender, lo más probable es que la ampolleta esté quemada.", action: "Cámbiala pronto: es económico y necesario para que te vean bien en la vía, además de evitar multas." },
+    res_fusible: { type: "result", severity: "leve", title: "Fusible quemado", description: "Cuando algo eléctrico deja de funcionar de golpe (ventana, radio, luces de un sector), suele ser un fusible quemado.", action: "Revisa la caja de fusibles del auto (viene en el manual dónde está) y cambia el fusible correspondiente por uno del mismo amperaje." },
+    res_fuga_frenos: { type: "result", severity: "urgente", title: "Fuga en el sistema de frenos", description: "Un pedal que se hunde hasta el fondo es señal de una posible fuga de líquido de frenos, algo serio.", action: "No manejes el auto así. Llévalo en grúa o revisa antes de conducir; es un tema de seguridad." },
+    res_frenos_desiguales: { type: "result", severity: "moderada", title: "Desgaste desigual de frenos", description: "Si el auto se va hacia un lado al frenar, es probable que un freno esté agarrando más que el otro.", action: "Lleva el auto a revisar el sistema de frenos completo antes de que empeore." },
+    res_freno_mano: { type: "result", severity: "moderada", title: "Freno de mano atascado", description: "Si cuesta soltar el freno de mano, o el auto arrastra un poco al andar, puede estar parcialmente atascado.", action: "Llévalo a revisar antes de que desgaste de más las pastillas o el disco por el roce constante." },
+    res_embrague: { type: "result", severity: "moderada", title: "Embrague desgastado", description: "En autos manuales, si el pedal se siente raro o el auto pierde fuerza al soltarlo (como si patinara), el embrague suele estar gastado.", action: "Lleva el auto a un taller a revisar el embrague antes de que quede sin tracción por completo." },
+    res_caja_cambios: { type: "result", severity: "moderada", title: "Caja de cambios (automática) con problema", description: "Tirones o demora al cambiar de marcha en una caja automática suelen indicar un problema en la caja o su electrónica.", action: "Llévalo pronto a un taller especializado en transmisiones; mientras antes se revise, menos daño se acumula." },
+    res_liquido_transmision: { type: "result", severity: "moderada", title: "Nivel de líquido de transmisión bajo", description: "Cambios bruscos junto con ruido pueden deberse a bajo nivel o mal estado del líquido de la transmisión.", action: "Pide que revisen el nivel y color del líquido de transmisión; puede ser tan simple como rellenarlo o cambiarlo." },
+    res_gas_ac: { type: "result", severity: "leve", title: "Gas refrigerante del aire acondicionado bajo", description: "Si sale aire pero no enfría, lo más común es que el gas refrigerante del sistema de A/C esté bajo.", action: "Lleva el auto a una recarga de gas; de paso te revisan si hay alguna fuga que lo esté vaciando." },
+    res_compresor_ac: { type: "result", severity: "moderada", title: "Compresor de aire acondicionado fallando", description: "Un ruido raro al activar el A/C, o que simplemente no arranque, suele apuntar al compresor del sistema.", action: "Llévalo a revisar antes de seguir usando el A/C, para evitar que el compresor se dañe más." },
+    res_filtro_aire: { type: "result", severity: "leve", title: "Filtro de aire obstruido", description: "Si pierde fuerza sobre todo al acelerar fuerte, un filtro de aire sucio puede estar limitando la entrada de aire al motor.", action: "Revisa o cambia el filtro de aire; es una de las mantenciones más simples y económicas." },
+    res_filtro_combustible: { type: "result", severity: "moderada", title: "Filtro de combustible obstruido", description: "Una pérdida de fuerza random, en cualquier momento, puede deberse a un filtro de combustible tapado.", action: "Lleva el auto a revisar y cambiar el filtro de combustible si corresponde." },
+  };
+
+  var SEVERITY = {
+    leve: { color: "var(--ok)", label: "Leve" },
+    moderada: { color: "var(--accent)", label: "Moderada" },
+    urgente: { color: "var(--bad)", label: "Urgente" },
+  };
+
+  var GENERIC_QUESTIONS = [
+    { key: "recency", text: "¿Hace cuánto tiempo notas esto?",
+      options: [ { text: "Recién hoy", value: "hoy" }, { text: "Hace unos días", value: "dias" }, { text: "Hace más de una semana", value: "semana" } ] },
+    { key: "frequency", text: "¿Ocurre todo el tiempo o solo en ciertos momentos?",
+      options: [ { text: "Todo el tiempo", value: "siempre" }, { text: "Solo a veces", value: "aveces" }, { text: "Solo cuando el auto recién arranca, en frío", value: "frio" } ] },
+    { key: "trend", text: "¿Ha ido empeorando o se mantiene igual?",
+      options: [ { text: "Ha ido empeorando", value: "empeora" }, { text: "Se mantiene igual", value: "igual" }, { text: "Fue solo una vez y no ha vuelto", value: "puntual" } ] },
+  ];
+
+  function buildContextNote(answers){
+    if (answers.trend === "empeora") return "Como notaste que ha ido empeorando, mejor no postergarlo mucho.";
+    if (answers.trend === "puntual") return "Como fue algo puntual, igual conviene estar atento por si vuelve a repetirse.";
+    if (answers.recency === "semana") return "Ya llevas más de una semana con esto, vale la pena agendar una revisión pronto.";
+    return "Esto es lo más probable según lo que describiste.";
+  }
+
+  // ---------------------------------------------------------------------
+  // Icons (inline, minimal, lucide-inspired)
+  // ---------------------------------------------------------------------
+  function icon(name, color, size){
+    size = size || 16;
+    var c = color || "currentColor";
+    var s = 'width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="' + c + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+    var paths = {
+      check: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/>',
+      alert: '<path d="M12 3.5 L21 19.5 H3 Z"/><path d="M12 9.5v5"/><circle cx="12" cy="17.2" r="0.6" fill="' + c + '"/>',
+      x: '<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>',
+      wrench: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2-2 2.6-2.6z"/>',
+      arrowLeft: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
+      rotate: '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/>',
+      volume2: '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 8.5a5 5 0 0 1 0 7"/><path d="M19.8 6a9 9 0 0 1 0 12"/>',
+      powerOff: '<path d="M12 3v6"/><path d="M18.4 6.3a9 9 0 1 1-12.8 0"/><path d="M4 4l16 16"/>',
+      thermometer: '<path d="M12 3a2 2 0 0 0-2 2v9.5a4 4 0 1 0 4 0V5a2 2 0 0 0-2-2z"/><circle cx="12" cy="17.5" r="1.4" fill="' + c + '"/>',
+      wind: '<path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 13h15a3 3 0 1 1-3 3"/><path d="M3 18h8a2.5 2.5 0 1 0-2.5-2.5"/>',
+      waves: '<path d="M3 8c1.5-2 3.5-2 5 0s3.5 2 5 0 3.5-2 5 0 3 2 3 2"/><path d="M3 14c1.5-2 3.5-2 5 0s3.5 2 5 0 3.5-2 5 0 3 2 3 2"/>',
+      lightbulb: '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M8 14a4.5 4.5 0 1 1 8 0c-.8 1-1.5 1.7-1.7 3H9.7c-.2-1.3-.9-2-1.7-3z"/>',
+      circleDot: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5" fill="' + c + '"/>',
+      gitBranch: '<circle cx="7" cy="6" r="2.3"/><circle cx="7" cy="18" r="2.3"/><circle cx="17" cy="10.5" r="2.3"/><path d="M7 8.3V18M7 8.3a8 8 0 0 0 10 2"/>',
+      snowflake: '<path d="M12 2v20M4.5 6l15 12M19.5 6l-15 12"/><path d="M9 4.5 12 7l3-2.5M9 19.5 12 17l3 2.5M4.5 9.5 7.7 12l-3.2 2.5M19.5 9.5 16.3 12l3.2 2.5"/>',
+      batteryWarning: '<rect x="2.5" y="7" width="16" height="10" rx="2"/><path d="M21.5 10.5v3"/><path d="M9.3 9.5v3.2"/><circle cx="9.3" cy="15" r="0.6" fill="' + c + '"/>',
+    };
+    return '<svg ' + s + '>' + paths[name] + '</svg>';
+  }
+
+  function escapeHtml(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+  // ---------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------
+  var path = ["start"];
+  var genericStep = 0;
+  var genericAnswers = {};
+  var scanned = false;
+
+  function currentNode(){ return TREE[path[path.length - 1]]; }
+
+  function specificCount(){
+    var n = 0;
+    for (var i = 0; i < path.length; i++){ if (TREE[path[i]].type === "question") n++; }
+    return n;
+  }
+
+  function computeState(){
+    var node = currentNode();
+    var sc = specificCount();
+    var totalQuestions = sc + GENERIC_QUESTIONS.length;
+    var answeredCount = node.type === "question" ? sc - 1 : sc + genericStep;
+    var isDone = node.type === "result" && genericStep >= GENERIC_QUESTIONS.length;
+    var progress = isDone ? 1 : answeredCount / totalQuestions;
+    return { node: node, totalQuestions: totalQuestions, answeredCount: answeredCount, isDone: isDone, progress: progress };
+  }
+
+  function goTo(nextId){ path.push(nextId); surveyRating = null; surveySent = false; render(); scrollToTop(); }
+  function answerGeneric(key, value){ genericAnswers[key] = value; genericStep++; render(); }
+  function goBack(){
+    var st = computeState();
+    if (st.node.type === "result" && genericStep > 0){ genericStep--; }
+    else if (path.length > 1){ path.pop(); }
+    surveyRating = null; surveySent = false;
+    render();
+  }
+  function restart(){ path = ["start"]; genericStep = 0; genericAnswers = {}; surveyRating = null; surveySent = false; render(); scrollToTop(); }
+  function scrollToTop(){ window.scrollTo({ top: 0, behavior: "smooth" }); }
+
+  // ---------------------------------------------------------------------
+  // Gauge
+  // ---------------------------------------------------------------------
+  var TICKS = Array.from({ length: 9 }, function(_, i){ return -90 + (i * 180) / 8; });
+
+  function renderGauge(st){
+    var node = st.node;
+    var color = node.type === "result" ? SEVERITY[node.severity].color : "var(--accent)";
+    var needleAngle = -90 + st.progress * 180;
+    var target = 264 - st.progress * 264;
+    var label = st.isDone ? "DIAGNÓSTICO LISTO" : "PASO " + (st.answeredCount + 1) + " DE " + st.totalQuestions;
+
+    var ticksHtml = TICKS.map(function(a){
+      return '<line x1="98" y1="100" x2="98" y2="24" stroke="#3a4048" stroke-width="2" transform="rotate(' + a + ', 98, 100)" stroke-dasharray="4 70"/>';
+    }).join("");
+
+    document.getElementById("gaugeWrap").innerHTML =
+      '<svg width="196" height="112" viewBox="0 0 196 112">' +
+        '<path d="M 14 100 A 84 84 0 0 1 182 100" fill="none" stroke="var(--border-soft)" stroke-width="10" stroke-linecap="round"/>' +
+        ticksHtml +
+        '<path d="M 14 100 A 84 84 0 0 1 182 100" fill="none" stroke="' + color + '" stroke-width="10" stroke-linecap="round" stroke-dasharray="264" class="dv-scan" style="--target:' + target + '"/>' +
+        '<g style="transform: rotate(' + needleAngle + 'deg); transform-origin: 98px 100px; transition: transform .5s cubic-bezier(.4,0,.2,1);">' +
+          '<line x1="98" y1="100" x2="98" y2="30" stroke="var(--text)" stroke-width="2" stroke-linecap="round"/>' +
+        '</g>' +
+        '<circle cx="98" cy="100" r="4.5" fill="var(--text)"/>' +
+        '<text x="98" y="84" text-anchor="middle" class="dv-mono" font-size="9.5" fill="var(--text-faint)" letter-spacing="1">' + label + '</text>' +
+      '</svg>';
+  }
+
+  // ---------------------------------------------------------------------
+  // Content
+  // ---------------------------------------------------------------------
+  function renderContent(st){
+    var node = st.node;
+    var el = document.getElementById("content");
+
+    if (node.type === "question"){
+      var optsHtml = node.options.map(function(opt, i){
+        return '<button class="option" data-idx="' + i + '">' +
+          (opt.icon ? icon(opt.icon, "var(--accent)", 17) : "") +
+          '<span>' + escapeHtml(opt.text) + '</span>' +
+        '</button>';
+      }).join("");
+
+      el.innerHTML =
+        '<div class="panel-title dv-display">' + escapeHtml(node.text) + '</div>' +
+        '<div class="options">' + optsHtml + '</div>' +
+        (path.length > 1 ? '<button class="back-link" id="backBtn">' + icon("arrowLeft", "currentColor", 14) + ' Volver a la pregunta anterior</button>' : '');
+
+      el.querySelectorAll(".option").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          goTo(node.options[parseInt(this.getAttribute("data-idx"), 10)].next);
+        });
+      });
+      var back = document.getElementById("backBtn");
+      if (back) back.addEventListener("click", goBack);
+
+    } else if (!st.isDone){
+      var gq = GENERIC_QUESTIONS[genericStep];
+      var gOptsHtml = gq.options.map(function(opt, i){
+        return '<button class="option" data-idx="' + i + '"><span>' + escapeHtml(opt.text) + '</span></button>';
+      }).join("");
+
+      el.innerHTML =
+        '<div class="panel-eyebrow dv-mono">Un poco más de contexto</div>' +
+        '<div class="panel-title dv-display">' + escapeHtml(gq.text) + '</div>' +
+        '<div class="options">' + gOptsHtml + '</div>' +
+        '<button class="back-link" id="backBtn">' + icon("arrowLeft", "currentColor", 14) + ' Volver a la pregunta anterior</button>';
+
+      el.querySelectorAll(".option").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          answerGeneric(gq.key, gq.options[parseInt(this.getAttribute("data-idx"), 10)].value);
+        });
+      });
+      document.getElementById("backBtn").addEventListener("click", goBack);
+
+    } else {
+      var sev = SEVERITY[node.severity];
+      var sevIcon = node.severity === "leve" ? "check" : node.severity === "urgente" ? "x" : "alert";
+      var contextNote = buildContextNote(genericAnswers);
+
+      el.innerHTML =
+        '<div class="result-card">' +
+          '<div class="severity-row">' + icon(sevIcon, sev.color, 17) +
+            '<span class="severity-tag dv-mono" style="color:' + sev.color + '">Severidad ' + sev.label + '</span>' +
+          '</div>' +
+          '<div class="result-title dv-display">' + escapeHtml(node.title) + '</div>' +
+          (contextNote ? '<div class="context-note">' + escapeHtml(contextNote) + '</div>' : '') +
+          '<div class="result-desc">' + escapeHtml(node.description) + '</div>' +
+          '<div class="action-box">' + icon("wrench", "var(--accent)", 15) +
+            '<div><div class="action-label dv-mono">Qué hacer ahora</div><div class="action-text">' + escapeHtml(node.action) + '</div></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="result-buttons">' +
+          '<button class="btn btn-secondary" id="backBtn2">' + icon("arrowLeft", "currentColor", 14) + ' Corregir respuesta</button>' +
+          '<button class="btn btn-primary" id="restartBtn">' + icon("rotate", "currentColor", 14) + ' Nuevo diagnóstico</button>' +
+        '</div>' +
+        '<div class="mini-actions">' +
+          '<button class="mini-btn" id="shareBtn">🔗 Compartir</button>' +
+          '<button class="mini-btn" id="reportBtn">⚠️ ¿No te sirvió? Cuéntanos</button>' +
+        '</div>';
+
+      document.getElementById("backBtn2").addEventListener("click", goBack);
+      document.getElementById("restartBtn").addEventListener("click", restart);
+      document.getElementById("shareBtn").addEventListener("click", function(){ shareResult(node); });
+      document.getElementById("reportBtn").addEventListener("click", function(){ reportDiagnosis(node); });
+
+      renderSurvey(node);
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Compartir y reportar
+  // ---------------------------------------------------------------------
+  function shareResult(node){
+    var url = window.location.href.split("?")[0];
+    var text = "Descubrí que mi auto puede tener: " + node.title + ". Prueba MotorScan:";
+    if (navigator.share){
+      navigator.share({ title: "MotorScan", text: text, url: url }).catch(function(){});
+    } else if (navigator.clipboard){
+      navigator.clipboard.writeText(text + " " + url).then(function(){
+        alert("Link copiado. ¡Ya lo puedes pegar donde quieras!");
+      });
+    } else {
+      window.open("https://wa.me/?text=" + encodeURIComponent(text + " " + url), "_blank");
+    }
+  }
+
+  function reportDiagnosis(node){
+    var subject = "MotorScan – diagnóstico incorrecto";
+    var body =
+      "Diagnóstico que me dio la web: " + node.title + "\n\n" +
+      "Lo que realmente tenía mi auto (completa aquí):\n\n\n" +
+      "Otros comentarios:\n";
+    window.location.href = "mailto:" + CONTACT_EMAIL + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  }
+
+  // ---------------------------------------------------------------------
+  // Encuesta de satisfacción
+  // ---------------------------------------------------------------------
+  var surveyRating = null;
+  var surveySent = false;
+  var SURVEY_RATINGS = [
+    { value: "muy_util", label: "😃 Muy útil" },
+    { value: "mas_menos", label: "😐 Más o menos" },
+    { value: "no_sirvio", label: "😕 No me sirvió" },
+  ];
+
+  function renderSurvey(node){
+    var wrap = document.getElementById("surveyWrap");
+    if (!wrap) return;
+
+    if (surveySent){
+      wrap.innerHTML = '<div class="survey-card"><div class="survey-sent">¡Gracias por tu opinión! 🙌</div></div>';
+      return;
+    }
+
+    var ratingsHtml = SURVEY_RATINGS.map(function(r){
+      return '<button class="survey-rating-btn' + (surveyRating === r.value ? " selected" : "") + '" data-value="' + r.value + '">' + r.label + '</button>';
+    }).join("");
+
+    wrap.innerHTML =
+      '<div class="survey-card">' +
+        '<div class="survey-title dv-display">¿Qué te pareció MotorScan?</div>' +
+        '<div class="survey-ratings">' + ratingsHtml + '</div>' +
+        '<textarea class="survey-comment" id="surveyComment" placeholder="¿Algo que agregarías o mejorarías? (opcional)"></textarea>' +
+        '<button class="btn btn-primary" id="surveySendBtn" style="width:100%">Enviar opinión</button>' +
+      '</div>';
+
+    wrap.querySelectorAll(".survey-rating-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        surveyRating = this.getAttribute("data-value");
+        renderSurvey(node);
+      });
+    });
+
+    document.getElementById("surveySendBtn").addEventListener("click", function(){
+      var comment = document.getElementById("surveyComment").value;
+      var ratingLabel = surveyRating ? SURVEY_RATINGS.filter(function(r){ return r.value === surveyRating; })[0].label : "No indicó";
+      var subject = "MotorScan – encuesta de satisfacción";
+      var body =
+        "Calificación: " + ratingLabel + "\n\n" +
+        "Comentario: " + (comment || "(sin comentario)") + "\n\n" +
+        "Último diagnóstico recibido: " + node.title;
+      window.location.href = "mailto:" + CONTACT_EMAIL + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+      surveySent = true;
+      renderSurvey(node);
+    });
+  }
+
+  function render(){
+    var st = computeState();
+    renderGauge(st);
+    renderContent(st);
+    if (!st.isDone){
+      var wrap = document.getElementById("surveyWrap");
+      if (wrap) wrap.innerHTML = "";
+    }
+  }
+
+  render();
+  setTimeout(function(){
+    scanned = true;
+    document.getElementById("screenInner").classList.remove("booting");
+  }, 900);
+})();
+</script>
+</body>
+</html>
